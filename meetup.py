@@ -6,9 +6,20 @@ import time
 global p3
 p3 = pprint.PrettyPrinter(indent=4)
 
+MAX_RETRIES = 5
+
 
 class ApiException(Exception):
     pass
+
+
+class CustomException(Exception):
+
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return repr(self.value)
 
 
 class AWSCredential:
@@ -19,9 +30,13 @@ class AWSCredential:
 
 
 def poll_api(api_call):
+
     def api_poller(*args, **kwargs):
+        attempt_count = 1
         retval = ''
         while True:
+            if attempt_count > MAX_RETRIES:
+                raise CustomException("MAX_RETRIES reached")
             try:
                 retval = api_call(*args, **kwargs)
                 break
@@ -29,6 +44,8 @@ def poll_api(api_call):
                 print(str(e))
                 print('.')
                 time.sleep(5)
+            print("Attempt Count is %d" % attempt_count)
+            attempt_count += 1
         return retval
     return api_poller
 
@@ -65,8 +82,8 @@ def main():
 
     except KeyboardInterrupt:
         print('Keyboard interrupt!')
-    except Exception as e:
-        print(e)
+    except Exception:
+        raise
 
     finally:
         print("Tearing down...")
