@@ -11,6 +11,7 @@ class ApiException(Exception):
 
 
 class AWSCredential:
+
     def __init__(self, access_key, secret_key):
         self.access_key = access_key
         self.secret_key = secret_key
@@ -33,6 +34,10 @@ def main():
     try:
         print('Setting up')
         vpc_id = build_vpc(creds, REGION, cidr="10.13.0.0/16")
+        subnet_1 = build_subnet(creds, REGION, vpc_id=vpc_id,
+                                cidr="10.13.1.0/24", az='a')
+        subnet_2 = build_subnet(creds, REGION, vpc_id=vpc_id,
+                                cidr="10.13.2.0/24", az='b')
 
     except KeyboardInterrupt:
         print('Keyboard interrupt!')
@@ -41,6 +46,8 @@ def main():
 
     finally:
         print("Tearing down...")
+        destroy_subnet(creds, REGION, subnet_id=subnet_1)
+        destroy_subnet(creds, REGION, subnet_id=subnet_2)
         destroy_vpc(creds, REGION, vpc_id=vpc_id)
 
 
@@ -81,6 +88,48 @@ def destroy_vpc(aws_creds, region, vpc_id=""):
     endpoint = ec2.get_endpoint(region)
     http_response, response_data = operation.call(endpoint,
                                                   VpcId=vpc_id)
+
+    p3.pprint(str(http_response.status_code) + " - " + http_response.reason)
+    p3.pprint(response_data)
+
+    if http_response.status_code != 200:
+        raise(ApiException)
+
+    return True
+
+
+def build_subnet(aws_creds, region, vpc_id="", cidr="", az=""):
+    print('Building subnet %s in AZ %s' % (str(cidr), str(az)))
+    session = botocore.session.get_session()
+    session.set_credentials(aws_creds.access_key, aws_creds.secret_key)
+    ec2 = session.get_service('ec2')
+    operation = ec2.get_operation('CreateSubnet')
+    endpoint = ec2.get_endpoint(region)
+    http_response, response_data = operation.call(endpoint,
+                                                  VpcId=vpc_id,
+                                                  CidrBlock=cidr,
+                                                  AvailabilityZone="%s%s" % (
+                                                      region, az))
+
+    p3.pprint(str(http_response.status_code) + " - " + http_response.reason)
+    p3.pprint(response_data)
+
+    if http_response.status_code != 200:
+        raise(ApiException)
+
+    subnet_id = response_data['Subnet']['SubnetId']
+    return subnet_id
+
+
+def destroy_subnet(aws_creds, region, subnet_id=""):
+    print('Destroying subnet %s' % str(subnet_id))
+    session = botocore.session.get_session()
+    session.set_credentials(aws_creds.access_key, aws_creds.secret_key)
+    ec2 = session.get_service('ec2')
+    operation = ec2.get_operation('DeleteSubnet')
+    endpoint = ec2.get_endpoint(region)
+    http_response, response_data = operation.call(endpoint,
+                                                  SubnetId=subnet_id)
     p3.pprint(str(http_response.status_code) + " - " + http_response.reason)
     p3.pprint(response_data)
 
