@@ -1,6 +1,7 @@
 import argparse
 import botocore.session
 import pprint
+import time
 
 global p3
 p3 = pprint.PrettyPrinter(indent=4)
@@ -15,6 +16,21 @@ class AWSCredential:
     def __init__(self, access_key, secret_key):
         self.access_key = access_key
         self.secret_key = secret_key
+
+
+def poll_api(api_call):
+    def api_poller(*args, **kwargs):
+        retval = ''
+        while True:
+            try:
+                retval = api_call(*args, **kwargs)
+                break
+            except ApiException as e:
+                print(str(e))
+                print('.')
+                time.sleep(5)
+        return retval
+    return api_poller
 
 
 def main():
@@ -61,6 +77,7 @@ def main():
         destroy_vpc(creds, REGION, vpc_id=vpc_id)
 
 
+@poll_api
 def build_vpc(aws_creds, region, cidr=""):
     print('Building VPC for %s network' % str(cidr))
     session = botocore.session.get_session()
@@ -89,6 +106,7 @@ def build_vpc(aws_creds, region, cidr=""):
     return vpc_id
 
 
+@poll_api
 def destroy_vpc(aws_creds, region, vpc_id=""):
     print('Destroying VPC %s' % str(vpc_id))
     session = botocore.session.get_session()
@@ -108,6 +126,7 @@ def destroy_vpc(aws_creds, region, vpc_id=""):
     return True
 
 
+@poll_api
 def build_subnet(aws_creds, region, vpc_id="", cidr="", az=""):
     print('Building subnet %s in AZ %s' % (str(cidr), str(az)))
     session = botocore.session.get_session()
@@ -131,6 +150,7 @@ def build_subnet(aws_creds, region, vpc_id="", cidr="", az=""):
     return subnet_id
 
 
+@poll_api
 def destroy_subnet(aws_creds, region, subnet_id=""):
     print('Destroying subnet %s' % str(subnet_id))
     session = botocore.session.get_session()
@@ -149,6 +169,7 @@ def destroy_subnet(aws_creds, region, subnet_id=""):
     return True
 
 
+@poll_api
 def build_security_group(aws_creds, region, sg_name="", vpc_id=""):
     print('Building security group')
     session = botocore.session.get_session()
@@ -171,6 +192,7 @@ def build_security_group(aws_creds, region, sg_name="", vpc_id=""):
     return sg_id
 
 
+@poll_api
 def destroy_security_group(aws_creds, region, sg_id=""):
     print('Destroying security group')
     session = botocore.session.get_session()
@@ -190,6 +212,7 @@ def destroy_security_group(aws_creds, region, sg_id=""):
     return True
 
 
+@poll_api
 def build_elb(aws_creds, region, lb_name="", subnets=[], elb_sg_id=""):
     print('Building elb')
     session = botocore.session.get_session()
@@ -218,6 +241,7 @@ def build_elb(aws_creds, region, lb_name="", subnets=[], elb_sg_id=""):
     return elb_name
 
 
+@poll_api
 def destroy_elb(aws_creds, region, lb_name=""):
     print('Destroying elb')
     session = botocore.session.get_session()
