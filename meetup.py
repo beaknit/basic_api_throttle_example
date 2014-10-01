@@ -70,7 +70,7 @@ def main():
 
     finally:
         print("Tearing down...")
-        destroy_elb(creds, REGION, lb_name="meetup-elb")
+        destroy_elb(creds, REGION, lb_name="meeterp-elb")
         destroy_security_group(creds, REGION, sg_id=elb_sg_id)
         destroy_subnet(creds, REGION, subnet_id=subnet_1)
         destroy_subnet(creds, REGION, subnet_id=subnet_2)
