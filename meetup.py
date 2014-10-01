@@ -38,6 +38,12 @@ def main():
                                 cidr="10.13.1.0/24", az='a')
         subnet_2 = build_subnet(creds, REGION, vpc_id=vpc_id,
                                 cidr="10.13.2.0/24", az='b')
+        elb_sg_id = build_security_group(creds, REGION,
+                                         sg_name='meetup-elb-sg',
+                                         vpc_id=vpc_id)
+
+        build_elb(creds, REGION, lb_name="meetup-elb",
+                  subnets=[subnet_1, subnet_2], elb_sg_id=elb_sg_id)
 
     except KeyboardInterrupt:
         print('Keyboard interrupt!')
@@ -46,6 +52,8 @@ def main():
 
     finally:
         print("Tearing down...")
+        destroy_elb(creds, REGION, lb_name="meetup-elb")
+        destroy_security_group(creds, REGION, sg_id=elb_sg_id)
         destroy_subnet(creds, REGION, subnet_id=subnet_1)
         destroy_subnet(creds, REGION, subnet_id=subnet_2)
         destroy_vpc(creds, REGION, vpc_id=vpc_id)
@@ -138,6 +146,93 @@ def destroy_subnet(aws_creds, region, subnet_id=""):
 
     return True
 
+
+def build_security_group(aws_creds, region, sg_name="", vpc_id=""):
+    print('Building security group')
+    session = botocore.session.get_session()
+    session.set_credentials(aws_creds.access_key, aws_creds.secret_key)
+    ec2 = session.get_service('ec2')
+    operation = ec2.get_operation('CreateSecurityGroup')
+    endpoint = ec2.get_endpoint(region)
+    http_response, response_data = operation.call(endpoint,
+                                                  GroupName=sg_name,
+                                                  Description=sg_name,
+                                                  VpcId=vpc_id)
+
+    p3.pprint(str(http_response.status_code) + " - " + http_response.reason)
+    p3.pprint(response_data)
+
+    if http_response.status_code != 200:
+        raise(ApiException)
+
+    sg_id = response_data['GroupId']
+    return sg_id
+
+
+def destroy_security_group(aws_creds, region, sg_id=""):
+    print('Destroying security group')
+    session = botocore.session.get_session()
+    session.set_credentials(aws_creds.access_key, aws_creds.secret_key)
+    ec2 = session.get_service('ec2')
+    operation = ec2.get_operation('DeleteSecurityGroup')
+    endpoint = ec2.get_endpoint(region)
+    http_response, response_data = operation.call(endpoint,
+                                                  GroupId=sg_id)
+
+    p3.pprint(str(http_response.status_code) + " - " + http_response.reason)
+    p3.pprint(response_data)
+
+    if http_response.status_code != 200:
+        raise(ApiException)
+
+    return True
+
+
+def build_elb(aws_creds, region, lb_name="", subnets=[], elb_sg_id=""):
+    print('Building elb')
+    session = botocore.session.get_session()
+    session.set_credentials(aws_creds.access_key, aws_creds.secret_key)
+    elb = session.get_service('elb')
+    operation = elb.get_operation('CreateLoadBalancer')
+    endpoint = elb.get_endpoint(region)
+    http_response, response_data = operation.call(endpoint,
+                                                  LoadBalancerName=lb_name,
+                                                  Listeners=[
+                                                      {"Protocol": 'http',
+                                                       "LoadBalancerPort": 80,
+                                                       "InstanceProtocol": 'http',
+                                                       "InstancePort": 80}],
+                                                  Subnets=subnets,
+                                                  SecurityGroups=[elb_sg_id],
+                                                  Scheme='internal')
+
+    p3.pprint(str(http_response.status_code) + " - " + http_response.reason)
+    p3.pprint(response_data)
+
+    if http_response.status_code != 200:
+        raise(ApiException)
+
+    elb_name = response_data['DNSName']
+    return elb_name
+
+
+def destroy_elb(aws_creds, region, lb_name=""):
+    print('Destroying elb')
+    session = botocore.session.get_session()
+    session.set_credentials(aws_creds.access_key, aws_creds.secret_key)
+    elb = session.get_service('elb')
+    operation = elb.get_operation('DeleteLoadBalancer')
+    endpoint = elb.get_endpoint(region)
+    http_response, response_data = operation.call(endpoint,
+                                                  LoadBalancerName=lb_name)
+
+    p3.pprint(str(http_response.status_code) + " - " + http_response.reason)
+    p3.pprint(response_data)
+
+    if http_response.status_code != 200:
+        raise(ApiException)
+
+    return True
 
 if __name__ == '__main__':
     main()
