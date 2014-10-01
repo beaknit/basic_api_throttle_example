@@ -36,9 +36,12 @@ def main():
 
     except KeyboardInterrupt:
         print('Keyboard interrupt!')
-
     except Exception as e:
         print(e)
+
+    finally:
+        print("Tearing down...")
+        destroy_vpc(creds, REGION, vpc_id=vpc_id)
 
 
 def build_vpc(aws_creds, region, cidr=""):
@@ -67,6 +70,25 @@ def build_vpc(aws_creds, region, cidr=""):
                                                   )
 
     return vpc_id
+
+
+def destroy_vpc(aws_creds, region, vpc_id=""):
+    print('Destroying VPC %s' % str(vpc_id))
+    session = botocore.session.get_session()
+    session.set_credentials(aws_creds.access_key, aws_creds.secret_key)
+    ec2 = session.get_service('ec2')
+    operation = ec2.get_operation('DeleteVpc')
+    endpoint = ec2.get_endpoint(region)
+    http_response, response_data = operation.call(endpoint,
+                                                  VpcId=vpc_id)
+    p3.pprint(str(http_response.status_code) + " - " + http_response.reason)
+    p3.pprint(response_data)
+
+    if http_response.status_code != 200:
+        raise(ApiException)
+
+    return True
+
 
 if __name__ == '__main__':
     main()
