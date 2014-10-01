@@ -1,5 +1,6 @@
 import argparse
 import botocore.session
+import datetime
 import pprint
 import time
 
@@ -43,8 +44,15 @@ def poll_api(api_call):
             except ApiException as e:
                 print(str(e))
                 print('.')
+            print("Attempt Count is %d at %s" % (
+                attempt_count, str(datetime.datetime.utcnow()))
+            )
+            if attempt_count == 1:
+                time.sleep(1)
+            elif attempt_count == 2:
                 time.sleep(5)
-            print("Attempt Count is %d" % attempt_count)
+            else:
+                time.sleep(15)
             attempt_count += 1
         return retval
     return api_poller
