@@ -45,6 +45,8 @@ def main():
         build_elb(creds, REGION, lb_name="meetup-elb",
                   subnets=[subnet_1, subnet_2], elb_sg_id=elb_sg_id)
 
+        import pdb; pdb.set_trace()
+
     except KeyboardInterrupt:
         print('Keyboard interrupt!')
     except Exception as e:
