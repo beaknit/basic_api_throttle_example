@@ -1,4 +1,5 @@
-meetup
+Polling Eventually-Consistent Infrastructure
 ======
+My prentation as the AWS rep
 
-expository
+https://www.meetup.com/Amazon-Web-Services-Virginia/events/206443922
